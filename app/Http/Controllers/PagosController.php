@@ -21,10 +21,13 @@ class PagosController extends Controller
         switch ($value) {
             case 'previsualizar':
                 try {
+                    
                     $file = $request->file('file');
+                    //Extrae el tipo de extension de documento que se cargo
                     $fileExtension = $file->getClientOriginalExtension();
+                    //Valida que el archivo sea xlsx o csv, si es correcto llama la function leerExcel si no te devuelve un mensaje de error
                     if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
-                        $data = $this->leerAprobados($request);
+                        $data = $this->leerExcel($request);
                         return response()->json([
                             'data' => $data,
                             "success" => true,
@@ -52,33 +55,49 @@ class PagosController extends Controller
                 try {
 
                     $file = $request->file('file');
+                    //Extrae el tipo de extension de documento que se cargo
                     $fileExtension = $file->getClientOriginalExtension();
+                    //Valida que el archivo sea xlsx o csv, si es correcto llama la function leerExcel si no te devuelve un mensaje de error
                     if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
-                        $data = $this->leerAprobados($request);
+                        $data = $this->leerExcel($request);
                         foreach ($data as $pagoData) {
 
                             $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
                             $pagoData['fecha_pago'] = DateTime::createFromFormat('m-d-Y', $pagoData['fecha_pago'])->format('Y-m-d');
 
-                            $fechaActual = new DateTime();
-                            $fechaActualString = $fechaActual->format('Y-m-d');
-
-                            if (($pagoData['fecha_pago'] < $fechaActualString)) {
-                                return response()->json([
-                                    'msg' => "Revisar archivo se encuenta una fecha menor a la actual",
-                                    'success' => false
-                                ], 404);
-                            }
+                            // Valida que todos los campos esten lleno
                             if (
                                 !isset($pagoData['fecha_pago']) || !isset($pagoData['id_pago']) || !isset($pagoData['documento'])
-                                || !isset($pagoData['correo']) || !isset($pagoData['monto'])
+                                || !isset($pagoData['correo']) || !isset($pagoData['monto'])||  !isset($pagoData['nombre'])
                             ) {
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta campos vacios",
                                     'success' => false
                                 ], 404);
                             }
-
+                            // Valida que el monto de confirmacion sea igual al registrado
+                            $sql = "SELECT 1 FROM pagos WHERE fecha_pago = ? AND documento = ? AND correo = ? AND monto = ?";
+                            $params = [
+                                $pagoData['fecha_pago'],
+                                $pagoData['documento'],
+                                $pagoData['correo'],
+                                $pagoData['monto'],
+                            ];
+                            $monto = DB::select($sql,$params);
+                          
+                            if($monto != 1){
+                                return response()->json([
+                                    'error' => [
+                                        "msg" => "El monto en el registro es incorrecto: ",
+                                        "documento" => $pagoData['documento'],
+                                        "nombre" => $pagoData['nombre'],
+                                        "correo" =>  $pagoData['correo'],
+                                        "fecha_pago" => $pagoData['fecha_pago'],
+                                        "monto" => $pagoData['monto']
+                                    ],
+                                    'success' => false
+                                ], 404);
+                            }
                         }
                     } else {
                         return response()->json([
@@ -86,7 +105,9 @@ class PagosController extends Controller
                             'success' => false
                         ], 404);
                     }
-
+                    /* Si el archivo cargado pasa todas las validaciones procede a buscar los registros cargado, actualiza el estado de pago,
+                       guarda el id_pago y el usuario que aprobado el pago
+                    */ 
                     $sql = "UPDATE pagos SET id_pago = ?, estado_pago = ?, usuario_aprueba = ? WHERE documento = ? AND correo = ? AND monto = ? AND fecha_pago = ?";
                     foreach ($data as $pagoData) {
                         $user = JWTAuth::parseToken()->authenticate();
@@ -128,7 +149,6 @@ class PagosController extends Controller
         }
 
     }
-
     public function pagosPendientes(Request $request)
     {
         $value = $request->input('some_value');
@@ -140,9 +160,11 @@ class PagosController extends Controller
                 try {
 
                     $file = $request->file('file');
+                    //Extrae el tipo de extension de documento que se cargo
                     $fileExtension = $file->getClientOriginalExtension();
+                    //Valida que el archivo sea xlsx o csv, si es correcto llama la function leerExcel si no te devuelve un mensaje de error
                     if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
-                        $data = $this->leerPendientes($request);
+                        $data = $this->leerExcel($request);
                         return response()->json([
                             'data' => $data,
                             "success" => true,
@@ -171,9 +193,11 @@ class PagosController extends Controller
                 try {
 
                     $file = $request->file('file');
+                    //Extrae el tipo de extension de documento que se cargo
                     $fileExtension = $file->getClientOriginalExtension();
+                    //Valida que el archivo sea xlsx o csv, si es correcto llama la function leerExcel si no te devuelve un mensaje de error
                     if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
-                        $data = $this->leerPendientes($request);
+                        $data = $this->leerExcel($request);
                         foreach ($data as $pagoData) {
 
                             $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
@@ -183,19 +207,21 @@ class PagosController extends Controller
 
                             $fechaActual = new DateTime();
                             $fechaActualString = $fechaActual->format('Y-m-d');
-
+                            // Valida que la fecha de pago y fecha limite de pago no sea inferior a la fecha actual 
                             if (($pagoData['fecha_pago'] < $fechaActualString) || ($pagoData['fecha_limite'] < $fechaActualString)) {
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta una fecha menor a la actual",
                                     'success' => false
                                 ], 404);
                             }
+                             // Valida que la fecha de pago no se inferior a la fecha limite de pago
                             if (($pagoData['fecha_pago'] < $pagoData['fecha_limite'])) {
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta una fecha limite menor a la fecha pago",
                                     'success' => false
                                 ], 404);
                             }
+                            // Valida que todos los campos esten lleno
                             if (
                                 !isset($pagoData['fecha_pago']) || !isset($pagoData['fecha_limite']) || !isset($pagoData['documento'])
                                 || !isset($pagoData['correo']) || !isset($pagoData['monto'])
@@ -213,6 +239,7 @@ class PagosController extends Controller
                             'success' => false
                         ], 404);
                     }
+                    // Revisa si existe en el registro en la base de datos y si no existe lo inserta
                     $sql = sprintf("INSERT INTO pagos (documento,nombre,correo,monto,fecha_pago,estado_pago,fecha_limite) SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1
                     FROM pagos p WHERE p.documento = ? AND p.nombre = ? AND p.correo = ? AND p.monto = ?  AND p.fecha_pago = ? AND p.estado_pago = ? AND p.fecha_limite = ? )");
 
@@ -266,9 +293,9 @@ class PagosController extends Controller
         }
 
     }
-
-    private function leerPendientes($request)
+    private function leerExcel($request)
     {
+        //valida que el archivo sea requerido
         $validator = Validator::make($request->all(), [
             'file' => 'required|required',
         ]);
@@ -278,7 +305,9 @@ class PagosController extends Controller
         }
         try {
             $file = $request->file('file');
+            //Extrae el tipo de extension de documento que se cargo
             $fileExtension = $file->getClientOriginalExtension();
+            //Valida que el archivo sea xlsx o csv, si es correcto lee el archivo cargado y devuelvo un array
             if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
                 $spreadsheet = IOFactory::load($file->getPathname());
                 $sheet = $spreadsheet->getActiveSheet();
@@ -296,58 +325,9 @@ class PagosController extends Controller
         }
 
         $formattedData = [];
-
+        //Se recorre el array cargado y los convierte en un json 
         foreach ($data as $rowData) {
             $formattedRow = [];
-
-            foreach ($columnNames as $index => $columnName) {
-                if (isset($rowData[$index])) {
-                    $formattedRow[$this->mapColumnNamePendientes($columnName)] = $rowData[$index];
-                }
-            }
-
-            $formattedData[] = $formattedRow;
-
-        }
-        return $formattedData;
-
-    }
-
-    private function leerAprobados($request)
-    {
-        $validator = Validator::make($request->all(), [
-            'file' => 'required|required',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors()->toJson(), 400);
-        }
-
-        try {
-            $file = $request->file('file');
-            $fileExtension = $file->getClientOriginalExtension();
-            if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
-
-                $spreadsheet = IOFactory::load($file->getPathname());
-                $sheet = $spreadsheet->getActiveSheet();
-                $data = $sheet->rangeToArray('A2:' . $sheet->getHighestColumn() . $sheet->getHighestRow());
-                $columnNames = $sheet->rangeToArray('A1:' . $sheet->getHighestColumn() . '1')[0];
-
-            } else {
-                return response()->json([
-                    'msg' => "El formato: " . $fileExtension . " no es valido",
-                    'success' => false
-                ], 404);
-            }
-        } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-
-        $formattedData = [];
-
-        foreach ($data as $rowData) {
-            $formattedRow = [];
-
             foreach ($columnNames as $index => $columnName) {
                 if (isset($rowData[$index])) {
                     $formattedRow[$this->mapColumnName($columnName)] = $rowData[$index];
@@ -355,11 +335,11 @@ class PagosController extends Controller
             }
 
             $formattedData[] = $formattedRow;
+
         }
-
         return $formattedData;
-    }
 
+    }
     private function mapColumnName($originalName)
     {
 
@@ -369,35 +349,21 @@ class PagosController extends Controller
             'documento' => 'documento',
             'fecha pago' => 'fecha_pago',
             'id_pago' => 'id_pago',
-        ];
-
-        return $columnMappings[$originalName] ?? $originalName;
-    }
-
-    private function mapColumnNamePendientes($originalName)
-    {
-
-        $columnMappings = [
-            'nombre' => 'nombre',
-            'correo' => 'correo',
-            'documento' => 'documento',
-            'fecha pago' => 'fecha_pago',
             'fecha limite' => 'fecha_limite',
         ];
 
         return $columnMappings[$originalName] ?? $originalName;
     }
-
     public function listar(Request $request)
     {
 
         $value = $request->input('some_value');
-
+        //Se lee el caso que viene en la variable some_value y llama la function que se necesita segun el caso
         switch ($value) {
 
             case 'fecha':
                 try {
-                    $data = $this->fecha($request->filtro);
+                    $data = $this->fecha();
                     return response()->json([
                         'success' => true,
                         'msg' => "ok",
@@ -450,7 +416,6 @@ class PagosController extends Controller
 
         }
     }
-
     private function fecha()
     {
         try {

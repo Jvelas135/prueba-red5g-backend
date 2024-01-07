@@ -16,6 +16,7 @@ class AuthController extends Controller
    
     public function register(Request $request)
     {
+        //Valida que todos los campos sean requeridos
         $validator = Validator::make($request->all(), [
             'name' => 'required',
             'email' => 'required|string|email|max:100|unique:users',
@@ -28,6 +29,7 @@ class AuthController extends Controller
             return response()->json($validator->errors()->toJson(), 400);
         }
 
+        //Inserta el usuario en la base de datos
         $sql = sprintf("INSERT INTO users (name,email,password,cedula,celular,rol) VALUES (?,?,?,?,?,?)");
         $success = DB::insert($sql, [$request->name, $request->email, Hash::make($request->password), $request->cedula, $request->celular, $request->rol]);
 
@@ -40,18 +42,19 @@ class AuthController extends Controller
    
     public function login(Request $request)
     {
-
+        //Valida que todos los campos sean requeridos
         $request->validate([
             "email" => "required|email",
             "password" => "required"
         ]);
 
+        //Valida el usuario y contraseña 
         $user = User::where("email", "=", $request->email)->first();
         if (isset($user->id)) {
             if (Hash::check($request->password, $user->password)) {
 
                 $customClaims = ['role' => $user->rol];
-
+                //genera un token
                 $token = JWTAuth::customClaims($customClaims)->fromUser($user);
 
                 return response()->json([
@@ -75,10 +78,10 @@ class AuthController extends Controller
 
     }
 
-    public function logout(Request $request)
+    public function logout()
     {
         try {
-
+            //inhabilita el token del usuario
             $token = JWTAuth::getToken();
             JWTAuth::invalidate($token);
 

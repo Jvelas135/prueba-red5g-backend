@@ -9,13 +9,6 @@ use Illuminate\Support\Facades\DB;
 class RolController extends Controller
 {
 
-     /**
-     * @OA\Get(
-     *     path="/api/roles",
-     *     summary="Obtener la lista de roles",
-     *     @OA\Response(response="200", description="Lista de roles"),
-     * )
-     */
     public function leerRoles(){
         try {
             $sql = sprintf("SELECT * FROM roles");
