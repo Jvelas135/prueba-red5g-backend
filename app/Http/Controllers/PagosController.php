@@ -132,11 +132,12 @@ class PagosController extends Controller
                         return response()->json([
                             "success" => true,
                             "msg" => "Estado de pago cambiado correctamente"
-                        ]);
+                        ],404);
 
                     } else {
                         return response()->json([
-                            "msg" => "Error decoding JSON"
+                            "msg" => "No se envio el archivo",
+                            "success" => false
                         ]);
                     }
 
@@ -285,8 +286,9 @@ class PagosController extends Controller
                     } else {
                         // Handle JSON decoding error
                         return response()->json([
-                            "msg" => "Error decoding JSON"
-                        ]);
+                            "msg" => "No se envio el archivo",
+                            "success" => false
+                        ],404);
 
                     }
 
