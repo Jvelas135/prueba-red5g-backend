@@ -21,11 +21,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-
-
-
 Route::post('login', [AuthController::class, 'login'])->name("login");
-Route::post('logout', [AuthController::class, 'logout']);
 
 Route::middleware('jwt.verify')->group(function(){
     Route::get('/user',[AuthController::class, 'users'])->middleware('checkRole:ADMINISTRADOR');
@@ -34,5 +30,6 @@ Route::middleware('jwt.verify')->group(function(){
     Route::post('/pagos_pendientes', [PagosController::class, 'pagosPendientes'])->middleware('checkRole:ADMINISTRADOR,PENDIENTES');
     Route::post('/listar', [PagosController::class, 'listar'])->middleware('checkRole:ADMINISTRADOR,LECTOR');
     Route::get('/roles',[RolController::class, 'leerRoles']);
+    Route::post('logout', [AuthController::class, 'logout']);
 });
  

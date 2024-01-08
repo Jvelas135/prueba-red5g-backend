@@ -21,7 +21,7 @@ class AuthController extends Controller
             'name' => 'required',
             'email' => 'required|string|email|max:100|unique:users',
             'password' => 'required|string|min:6',
-            'cedula' => 'required',
+            'cedula' => 'required|unique:users',
             'celular' => 'required',
             'rol' => 'required',
         ]);

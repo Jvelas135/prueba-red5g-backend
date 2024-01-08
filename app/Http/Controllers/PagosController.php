@@ -10,10 +10,11 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use DateTime;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Session;
 
 class PagosController extends Controller
 {
- 
+
     public function pagosAprobados(Request $request)
     {
         $value = $request->input('some_value');
@@ -21,7 +22,7 @@ class PagosController extends Controller
         switch ($value) {
             case 'previsualizar':
                 try {
-                    
+
                     $file = $request->file('file');
                     //Extrae el tipo de extension de documento que se cargo
                     $fileExtension = $file->getClientOriginalExtension();
@@ -54,12 +55,13 @@ class PagosController extends Controller
 
                 try {
 
-                    $file = $request->file('file');
-                    //Extrae el tipo de extension de documento que se cargo
-                    $fileExtension = $file->getClientOriginalExtension();
-                    //Valida que el archivo sea xlsx o csv, si es correcto llama la function leerExcel si no te devuelve un mensaje de error
-                    if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
-                        $data = $this->leerExcel($request);
+
+                    $jsonString = $request->input('data');
+                    // Decodifica la cadena JSON en un array asociativo
+                    $data = json_decode($jsonString, true);
+
+                    // Verifica si la decodificación fue exitosa
+                    if ($data !== null) {
                         foreach ($data as $pagoData) {
 
                             $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
@@ -68,7 +70,7 @@ class PagosController extends Controller
                             // Valida que todos los campos esten lleno
                             if (
                                 !isset($pagoData['fecha_pago']) || !isset($pagoData['id_pago']) || !isset($pagoData['documento'])
-                                || !isset($pagoData['correo']) || !isset($pagoData['monto'])||  !isset($pagoData['nombre'])
+                                || !isset($pagoData['correo']) || !isset($pagoData['monto']) || !isset($pagoData['nombre'])
                             ) {
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta campos vacios",
@@ -76,22 +78,29 @@ class PagosController extends Controller
                                 ], 404);
                             }
                             // Valida que el monto de confirmacion sea igual al registrado
-                            $sql = "SELECT 1 FROM pagos WHERE fecha_pago = ? AND documento = ? AND correo = ? AND monto = ?";
+                            $sql = sprintf("SELECT COUNT(*) AS result
+                            FROM pagos
+                            WHERE fecha_pago = ?
+                              AND documento =  ?
+                              AND correo =  ?
+                              AND monto =  ?
+                              AND nombre =  ? ");
                             $params = [
                                 $pagoData['fecha_pago'],
                                 $pagoData['documento'],
                                 $pagoData['correo'],
                                 $pagoData['monto'],
+                                $pagoData['nombre']
                             ];
-                            $monto = DB::select($sql,$params);
-                          
-                            if($monto != 1){
+                            $monto = DB::select($sql, $params);
+                        
+                            if ($monto[0]->result < 0) {
                                 return response()->json([
                                     'error' => [
                                         "msg" => "El monto en el registro es incorrecto: ",
                                         "documento" => $pagoData['documento'],
                                         "nombre" => $pagoData['nombre'],
-                                        "correo" =>  $pagoData['correo'],
+                                        "correo" => $pagoData['correo'],
                                         "fecha_pago" => $pagoData['fecha_pago'],
                                         "monto" => $pagoData['monto']
                                     ],
@@ -99,37 +108,37 @@ class PagosController extends Controller
                                 ], 404);
                             }
                         }
+                        /* Si el archivo cargado pasa todas las validaciones procede a buscar los registros cargado, actualiza el estado de pago,
+                       guarda el id_pago y el usuario que aprobado el pago
+                    */
+                        $sql = sprintf("UPDATE pagos SET id_pago = ?, estado_pago = ?, usuario_aprueba = ? WHERE documento = ? AND correo = ? AND monto = ? AND fecha_pago = ?");
+                        foreach ($data as $pagoData) {
+                            $user = JWTAuth::parseToken()->authenticate();
+
+                            $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
+                            $pagoData['fecha_pago'] = DateTime::createFromFormat('m-d-Y', $pagoData['fecha_pago'])->format('Y-m-d');
+                            $params = [
+                                $pagoData['id_pago'],
+                                'Pagado',
+                                $user->email,
+                                $pagoData['documento'],
+                                $pagoData['correo'],
+                                $pagoData['monto'],
+                                $pagoData['fecha_pago']
+                            ];
+
+                            DB::statement($sql, $params);
+                        }
+                        return response()->json([
+                            "success" => true,
+                            "msg" => "Estado de pago cambiado correctamente"
+                        ]);
+
                     } else {
                         return response()->json([
-                            'msg' => "El formato: " . $fileExtension . " no es valido",
-                            'success' => false
-                        ], 404);
+                            "msg" => "Error decoding JSON"
+                        ]);
                     }
-                    /* Si el archivo cargado pasa todas las validaciones procede a buscar los registros cargado, actualiza el estado de pago,
-                       guarda el id_pago y el usuario que aprobado el pago
-                    */ 
-                    $sql = "UPDATE pagos SET id_pago = ?, estado_pago = ?, usuario_aprueba = ? WHERE documento = ? AND correo = ? AND monto = ? AND fecha_pago = ?";
-                    foreach ($data as $pagoData) {
-                        $user = JWTAuth::parseToken()->authenticate();
-
-                        $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
-                        $pagoData['fecha_pago'] = DateTime::createFromFormat('m-d-Y', $pagoData['fecha_pago'])->format('Y-m-d');
-                        $params = [
-                            $pagoData['id_pago'],
-                            'Pagado',
-                            $user->email,
-                            $pagoData['documento'],
-                            $pagoData['correo'],
-                            $pagoData['monto'],
-                            $pagoData['fecha_pago']
-                        ];
-
-                        DB::statement($sql, $params);
-                    }
-                    return response()->json([
-                        "success" => true,
-                        "msg" => "Estado de pago cambiado correctamente"
-                    ]);
 
                 } catch (Exception $e) {
 
@@ -165,6 +174,8 @@ class PagosController extends Controller
                     //Valida que el archivo sea xlsx o csv, si es correcto llama la function leerExcel si no te devuelve un mensaje de error
                     if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
                         $data = $this->leerExcel($request);
+                        Session::put('myStoredArray', $data);
+
                         return response()->json([
                             'data' => $data,
                             "success" => true,
@@ -192,12 +203,13 @@ class PagosController extends Controller
 
                 try {
 
-                    $file = $request->file('file');
-                    //Extrae el tipo de extension de documento que se cargo
-                    $fileExtension = $file->getClientOriginalExtension();
-                    //Valida que el archivo sea xlsx o csv, si es correcto llama la function leerExcel si no te devuelve un mensaje de error
-                    if ($fileExtension == 'xlsx' || $fileExtension == 'csv') {
-                        $data = $this->leerExcel($request);
+                    $jsonString = $request->input('data');
+                    // Decode the JSON string into an associative array
+                    $data = json_decode($jsonString, true);
+
+                    // Verifica si la decodificación fue exitosa
+                    if ($data !== null) {
+                        // Ahora, $data es un array asociativo que puedes recorrer.
                         foreach ($data as $pagoData) {
 
                             $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
@@ -214,8 +226,8 @@ class PagosController extends Controller
                                     'success' => false
                                 ], 404);
                             }
-                             // Valida que la fecha de pago no se inferior a la fecha limite de pago
-                            if (($pagoData['fecha_pago'] < $pagoData['fecha_limite'])) {
+                            // Valida que la fecha de pago no se inferior a la fecha limite de pago
+                            if (($pagoData['fecha_pago'] > $pagoData['fecha_limite'])) {
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta una fecha limite menor a la fecha pago",
                                     'success' => false
@@ -233,47 +245,50 @@ class PagosController extends Controller
                             }
 
                         }
-                    } else {
+
+                        // Revisa si existe en el registro en la base de datos y si no existe lo inserta
+                        $sql = sprintf("INSERT INTO pagos (documento,nombre,correo,monto,fecha_pago,estado_pago,fecha_limite) SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1
+                        FROM pagos p WHERE p.documento = ? AND p.nombre = ? AND p.correo = ? AND p.monto = ?  AND p.fecha_pago = ? AND p.estado_pago = ? AND p.fecha_limite = ? )");
+
+                        foreach ($data as $pagoData) {
+
+                            $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
+                            $pagoData['fecha_limite'] = str_replace('/', '-', $pagoData['fecha_limite']);
+                            $pagoData['fecha_pago'] = DateTime::createFromFormat('m-d-Y', $pagoData['fecha_pago'])->format('Y-m-d');
+                            $pagoData['fecha_limite'] = DateTime::createFromFormat('m-d-Y', $pagoData['fecha_limite'])->format('Y-m-d');
+
+                            $params = [
+                                $pagoData['documento'],
+                                $pagoData['nombre'],
+                                $pagoData['correo'],
+                                $pagoData['monto'],
+                                $pagoData['fecha_pago'],
+                                'Pendiente',
+                                $pagoData['fecha_limite'],
+                                $pagoData['documento'],
+                                $pagoData['nombre'],
+                                $pagoData['correo'],
+                                $pagoData['monto'],
+                                $pagoData['fecha_pago'],
+                                'Pendiente',
+                                $pagoData['fecha_limite'],
+
+                            ];
+
+                            $success = DB::insert($sql, $params);
+                        }
                         return response()->json([
-                            'msg' => "El formato: " . $fileExtension . " no es valido",
-                            'success' => false
-                        ], 404);
+                            "success" => $success,
+                            "msg" => "Pagos pendientes guardados correctamente"
+                        ]);
+
+                    } else {
+                        // Handle JSON decoding error
+                        return response()->json([
+                            "msg" => "Error decoding JSON"
+                        ]);
+
                     }
-                    // Revisa si existe en el registro en la base de datos y si no existe lo inserta
-                    $sql = sprintf("INSERT INTO pagos (documento,nombre,correo,monto,fecha_pago,estado_pago,fecha_limite) SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1
-                    FROM pagos p WHERE p.documento = ? AND p.nombre = ? AND p.correo = ? AND p.monto = ?  AND p.fecha_pago = ? AND p.estado_pago = ? AND p.fecha_limite = ? )");
-
-                    foreach ($data as $pagoData) {
-
-                        $pagoData['fecha_pago'] = str_replace('/', '-', $pagoData['fecha_pago']);
-                        $pagoData['fecha_limite'] = str_replace('/', '-', $pagoData['fecha_limite']);
-                        $pagoData['fecha_pago'] = DateTime::createFromFormat('m-d-Y', $pagoData['fecha_pago'])->format('Y-m-d');
-                        $pagoData['fecha_limite'] = DateTime::createFromFormat('m-d-Y', $pagoData['fecha_limite'])->format('Y-m-d');
-
-                        $params = [
-                            $pagoData['documento'],
-                            $pagoData['nombre'],
-                            $pagoData['correo'],
-                            $pagoData['monto'],
-                            $pagoData['fecha_pago'],
-                            'Pendiente',
-                            $pagoData['fecha_limite'],
-                            $pagoData['documento'],
-                            $pagoData['nombre'],
-                            $pagoData['correo'],
-                            $pagoData['monto'],
-                            $pagoData['fecha_pago'],
-                            'Pendiente',
-                            $pagoData['fecha_limite'],
-
-                        ];
-
-                        $success = DB::insert($sql, $params);
-                    }
-                    return response()->json([
-                        "success" => $success,
-                        "msg" => "Pagos pendientes guardados correctamente"
-                    ]);
 
 
 
@@ -419,8 +434,8 @@ class PagosController extends Controller
     private function fecha()
     {
         try {
-            $sql = sprintf("SELECT * FROM pagos WHERE MONTH(fecha_pago) = MONTH(CURDATE())");
-            $data = DB::select($sql);
+            $sql = sprintf("SELECT * FROM pagos WHERE MONTH(fecha_pago) = MONTH(CURDATE()) AND estado_pago = ?");
+            $data = DB::select($sql,['Pendiente']);
             return $data;
 
         } catch (Exception $e) {
