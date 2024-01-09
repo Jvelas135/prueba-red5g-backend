@@ -23,6 +23,16 @@ class PagosController extends Controller
             case 'previsualizar':
                 try {
 
+                    $validator = Validator::make($request->all(), [
+                        'file' => 'required'
+                    ]);
+                    if ($validator->fails()) {
+                        return response()->json([
+                            "msg" => $validator->errors()->toJson(),
+                            "success" => false
+                    ]);
+                    }
+                    
                     $file = $request->file('file');
                     //Extrae el tipo de extension de documento que se cargo
                     $fileExtension = $file->getClientOriginalExtension();
