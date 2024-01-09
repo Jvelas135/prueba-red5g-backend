@@ -38,7 +38,7 @@ class PagosController extends Controller
                         return response()->json([
                             'msg' => "El formato: " . $fileExtension . " no es valido",
                             'success' => false
-                        ], 404);
+                        ]);
                     }
                 } catch (Exception $e) {
 
@@ -75,7 +75,7 @@ class PagosController extends Controller
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta campos vacios",
                                     'success' => false
-                                ], 404);
+                                ]);
                             }
                             // Valida que el monto de confirmacion sea igual al registrado
                             $sql = sprintf("SELECT COUNT(*) AS result
@@ -105,7 +105,7 @@ class PagosController extends Controller
                                         "monto" => $pagoData['monto']
                                     ],
                                     'success' => false
-                                ], 404);
+                                ]);
                             }
                         }
                         /* Si el archivo cargado pasa todas las validaciones procede a buscar los registros cargado, actualiza el estado de pago,
@@ -132,7 +132,7 @@ class PagosController extends Controller
                         return response()->json([
                             "success" => true,
                             "msg" => "Estado de pago cambiado correctamente"
-                        ],404);
+                        ],200);
 
                     } else {
                         return response()->json([
@@ -155,7 +155,7 @@ class PagosController extends Controller
                 return response()->json([
                     "msg" => "Valor no reconocido",
                     "success" => false
-                ], 404);
+                ]);
         }
 
     }
@@ -187,7 +187,7 @@ class PagosController extends Controller
                         return response()->json([
                             'msg' => "El formato: " . $fileExtension . " no es valido",
                             'success' => false
-                        ], 404);
+                        ]);
                     }
 
                 } catch (Exception $e) {
@@ -225,14 +225,14 @@ class PagosController extends Controller
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta una fecha menor a la actual",
                                     'success' => false
-                                ], 404);
+                                ]);
                             }
                             // Valida que la fecha de pago no se inferior a la fecha limite de pago
                             if (($pagoData['fecha_pago'] > $pagoData['fecha_limite'])) {
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta una fecha limite menor a la fecha pago",
                                     'success' => false
-                                ], 404);
+                                ]);
                             }
                             // Valida que todos los campos esten lleno
                             if (
@@ -242,7 +242,7 @@ class PagosController extends Controller
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta campos vacios",
                                     'success' => false
-                                ], 404);
+                                ]);
                             }
 
                         }
@@ -288,11 +288,9 @@ class PagosController extends Controller
                         return response()->json([
                             "msg" => "No se envio el archivo",
                             "success" => false
-                        ],404);
+                        ]);
 
                     }
-
-
 
                 } catch (Exception $e) {
                     return response()->json([
@@ -306,7 +304,7 @@ class PagosController extends Controller
                 return response()->json([
                     "msg" => "Valor no reconocido",
                     "success" => false
-                ], 404);
+                ]);
         }
 
     }

@@ -26,7 +26,10 @@ class AuthController extends Controller
             'rol' => 'required',
         ]);
         if ($validator->fails()) {
-            return response()->json($validator->errors()->toJson(), 400);
+            return response()->json([
+                "msg" => $validator->errors()->toJson(),
+                "success" => false
+        ]);
         }
 
         //Inserta el usuario en la base de datos
@@ -60,7 +63,8 @@ class AuthController extends Controller
                 return response()->json([
                     "msg" => "Usuario logueado correctamente",
                     "success" => true,
-                    "token" => $token
+                    "token" => $token,
+                    "user" => $user->rol
                 ], 200);
 
             } else {

@@ -26,9 +26,9 @@ Route::post('login', [AuthController::class, 'login'])->name("login");
 Route::middleware('jwt.verify')->group(function(){
     Route::get('/user',[AuthController::class, 'users'])->middleware('checkRole:ADMINISTRADOR');
     Route::post('register', [AuthController::class, 'register'])->middleware('checkRole:ADMINISTRADOR');
-    Route::post('/pagos_aprobados', [PagosController::class, 'pagosAprobados'])->middleware('checkRole:ADMINISTRADOR,APROBADOR');
-    Route::post('/pagos_pendientes', [PagosController::class, 'pagosPendientes'])->middleware('checkRole:ADMINISTRADOR,PENDIENTES');
-    Route::post('/listar', [PagosController::class, 'listar'])->middleware('checkRole:ADMINISTRADOR,LECTOR');
+    Route::post('/pagos_aprobados', [PagosController::class, 'pagosAprobados'])->middleware('checkRole:ADMINISTRADOR,APROBADOR,SEMI-ADMINISTRADOR');
+    Route::post('/pagos_pendientes', [PagosController::class, 'pagosPendientes'])->middleware('checkRole:ADMINISTRADOR,PENDIENTES,SEMI-ADMINISTRADOR');
+    Route::post('/listar', [PagosController::class, 'listar'])->middleware('checkRole:ADMINISTRADOR,LECTOR,SEMI-ADMINISTRADOR');
     Route::get('/roles',[RolController::class, 'leerRoles']);
     Route::post('logout', [AuthController::class, 'logout']);
 });
