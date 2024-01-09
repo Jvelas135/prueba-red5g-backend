@@ -13,7 +13,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-   
+
     public function register(Request $request)
     {
         //Valida que todos los campos sean requeridos
@@ -29,7 +29,7 @@ class AuthController extends Controller
             return response()->json([
                 "msg" => $validator->errors()->toJson(),
                 "success" => false
-        ]);
+            ]);
         }
 
         //Inserta el usuario en la base de datos
@@ -42,7 +42,7 @@ class AuthController extends Controller
         ]);
 
     }
-   
+
     public function login(Request $request)
     {
         //Valida que todos los campos sean requeridos
@@ -89,7 +89,10 @@ class AuthController extends Controller
             $token = JWTAuth::getToken();
             JWTAuth::invalidate($token);
 
-            return response()->json(['message' => 'Logout exitoso']);
+            return response()->json([
+                'msg' => 'Logout exitoso',
+                "success" => true
+            ]);
 
         } catch (Exception $e) {
             return response()->json([
@@ -98,7 +101,7 @@ class AuthController extends Controller
             ], 500);
         }
     }
-  
+
     public function users()
     {
         try {

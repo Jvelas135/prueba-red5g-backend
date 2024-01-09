@@ -75,7 +75,7 @@ class PagosController extends Controller
                                 return response()->json([
                                     'msg' => "Revisar archivo se encuenta campos vacios",
                                     'success' => false
-                                ]);
+                                ], 404);
                             }
                             // Valida que el monto de confirmacion sea igual al registrado
                             $sql = sprintf("SELECT COUNT(*) AS result
@@ -168,6 +168,16 @@ class PagosController extends Controller
             case 'previsualizar':
 
                 try {
+
+                    $validator = Validator::make($request->all(), [
+                        'file' => 'required'
+                    ]);
+                    if ($validator->fails()) {
+                        return response()->json([
+                            "msg" => $validator->errors()->toJson(),
+                            "success" => false
+                    ]);
+                    }
 
                     $file = $request->file('file');
                     //Extrae el tipo de extension de documento que se cargo

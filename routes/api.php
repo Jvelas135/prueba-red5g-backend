@@ -30,6 +30,6 @@ Route::middleware('jwt.verify')->group(function(){
     Route::post('/pagos_pendientes', [PagosController::class, 'pagosPendientes'])->middleware('checkRole:ADMINISTRADOR,PENDIENTES,SEMI-ADMINISTRADOR');
     Route::post('/listar', [PagosController::class, 'listar'])->middleware('checkRole:ADMINISTRADOR,LECTOR,SEMI-ADMINISTRADOR');
     Route::get('/roles',[RolController::class, 'leerRoles']);
-    Route::post('logout', [AuthController::class, 'logout']);
+    Route::get('logout', [AuthController::class, 'logout']);
 });
  
