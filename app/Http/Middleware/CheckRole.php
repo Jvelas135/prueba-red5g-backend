@@ -17,9 +17,15 @@ class CheckRole
                 return $next($request);
             }
 
-            return response()->json(['error' => 'No tienes permisos para acceder a esta página.'], 403);
+            return response()->json([
+                'msg' => 'No tienes permisos para acceder a esta página.',
+                "success" => false
+            ], 403);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Token no válido'], 401);
+            return response()->json([
+                'msg' => 'Token no válido',
+                "success" => false
+            ], 401);
         }
     }
 

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Exception;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
@@ -33,12 +32,12 @@ class AuthController extends Controller
         }
 
         //Inserta el usuario en la base de datos
-        $sql = sprintf("INSERT INTO users (name,email,password,cedula,celular,rol) VALUES (?,?,?,?,?,?)");
-        $success = DB::insert($sql, [$request->name, $request->email, Hash::make($request->password), $request->cedula, $request->celular, $request->rol]);
+         $user = new User();
+         $users = $user->register($request->name, $request->email, $request->password, $request->cedula, $request->celular, $request->rol);
 
         return response()->json([
-            "msg" => "Usuario creado correctamente",
-            "success" => $success,
+            "msg" =>$users["msg"],
+            "success" => $users["success"],
         ]);
 
     }
@@ -105,12 +104,14 @@ class AuthController extends Controller
     public function users()
     {
         try {
-            $sql = sprintf("SELECT name,email,celular,cedula,rol FROM users");
-            $users = DB::select($sql);
+           
+            $user = new User();
+            $users = $user->users();
+
             return response()->json([
-                "msg" => "ok",
-                "success" => true,
-                "data" => $users
+                "msg" => $users["msg"],
+                "success" =>  $users["success"],
+                "data" => $users["data"]
             ], 200);
 
         } catch (Exception $e) {

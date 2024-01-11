@@ -3,16 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Rol;
 use Exception;
-use Illuminate\Support\Facades\DB;
 
 class RolController extends Controller
 {
 
     public function leerRoles(){
         try {
-            $sql = sprintf("SELECT * FROM roles");
-            $roles = DB::select($sql);
+            $role = new Rol();
+            $roles = $role->leerRoles();
             return response()->json([
                 "msg" => "ok",
                 "success" => true,

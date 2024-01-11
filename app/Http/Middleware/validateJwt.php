@@ -21,7 +21,8 @@ class validateJwt
             JWTAuth::parseToken()->authenticate();
         } catch (Exception $e) {
             return response()->json([
-                "msg" => "Unauthorized"
+                "msg" => "Unauthorized",
+                "success" => false
             ], 401);
         }
         return $next($request);

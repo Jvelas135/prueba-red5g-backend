@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -56,4 +58,27 @@ class User extends Authenticatable implements JWTSubject
         return [];
     }    
 
+    public function register($name, $email, $password, $cedula, $celular, $rol){
+
+        $sql = sprintf("INSERT INTO users (name,email,password,cedula,celular,rol) VALUES (?,?,?,?,?,?)");
+        $success = DB::insert($sql, [$name, $email, Hash::make($password), $cedula, $celular, $rol]);
+
+        return [
+            "msg" => "Usuario creado correctamente",
+            "success" => $success,
+        ];
+    }
+
+    public function users(){
+        
+        $sql = sprintf("SELECT name,email,celular,cedula,rol FROM users");
+        $users = DB::select($sql);
+
+        return [
+            "msg" => "ok",
+            "success" => true,
+            "data" => $users
+        ];
+        
+    }
 }
